@@ -27,7 +27,7 @@ This approach allows user questions to be directly matched with examples of ques
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
 </div>
 
-The architecture of Q-RAG allows answer correction to take place, which works as following:
+The architecture of Q-RAG allows answer correction, which works as follows:
 
 - The RAG retriever did not manage to retrieve relevant context from the database. 
 - Poor context leads to poor answers. These cases can be detected by some evaluation method such as metric tracking, poor user rating, etc. 
