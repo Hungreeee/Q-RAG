@@ -4,7 +4,7 @@
 
 Retrieval Augmented Generation (RAG) has gained popularity as a method to incorporate non-parametric memory space to LLM agents, allowing them to gain access to more knowledge while avoiding the computational overhead from fine-tuning. RAG operates by retrieving relevant documents and augmenting them as the grounding context to every user input, thereby helping to enhance LLM's response accuracy and relevance. This is particularly powerful in knowlege-intensive tasks such as question answering.
 
-However, whether LLMs can accurately answer a question is highly dependent on the quality of the retrieved documents. RAG systems, however, may fail to obtain relevant context when human queries become too complex, resulting in poorly-formed answers. The core problem is matching human queries with documents does not necessarily mean that those documents will contain the answers. As such, there has been a research direction to improve the context retrieval process by utilzing advanced methods such as utilizing web search when the retrieved context is incorrect to the query, or forming a query rewriting loop until context retrieval is satisfied, etc. However, such methods are not truly "corrective" due to the following reasons:
+However, whether LLMs can accurately answer a question is highly dependent on the quality of the retrieved documents. RAG systems, however, may fail to obtain relevant context when human queries become too complex, resulting in poorly-formed answers. The core problem lies in the way semantic searching is being used: matching human queries with documents does not necessarily mean that those documents will contain details related to the answers. As such, there has been a research direction to improve the context retrieval process by developing advanced corrective methods to address scenarios where the retrieval performance is poor. This includes utilizing web search when the retrieved context is incorrect to the query, or forming a query rewriting loop until context retrieval is satisfied, etc. However, such methods are not truly "corrective" in a sense:
 
 - Methods similar to utilizing knowledge base extension such as web search is not truly corrective. They merely allow agents to gain access to a larger knowledge base, which clearly can still result in bad context retrieval.
 - Generally, these methods will go through the very same "advanced retrieval process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the very same problem again, which can be highly inefficient.
@@ -27,7 +27,7 @@ This approach allows user questions to be directly matched with examples of ques
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
 </div>
 
-The architecture of Q-RAG allows it to have answer correction, which operates as follows:
+The architecture of Q-RAG allows answer correction to take place, which works as following:
 
 - The RAG retriever did not manage to retrieve relevant context from the database. 
 - Poor context leads to poor answers. These cases can be detected by some evaluation method such as metric tracking, poor user rating, etc. 
@@ -39,7 +39,11 @@ To justify for this process, the intuition is that, in a realistic QnA setting, 
 
 ## Demo
 
+A small Q-RAG demo written with langchain can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb). It demonstrates how question-chunk connections can be simply replicated using metadata.
+
 ## Run Q-RAG
+
+Nothing here yet...
 
 ### Installation
 
@@ -50,3 +54,7 @@ To justify for this process, the intuition is that, in a realistic QnA setting, 
 ### Prepare dataset
 
 ### Run evaluation 
+
+## Contributions
+
+Nothing here yet...
