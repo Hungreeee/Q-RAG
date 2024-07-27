@@ -39,7 +39,11 @@ To justify for this process, the intuition is that, in a realistic QnA setting, 
 
 ## Demo
 
+The demo can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb). The evaluation process is performed on a small subset of the SQuAD v1 dataset, which is available on [HuggingFace](https://huggingface.co/datasets/rajpurkar/squad). Metrics utilized is BLEU score. 
+
 ## Run Q-RAG
+
+Nothing here yet...
 
 ### Installation
 
@@ -50,3 +54,7 @@ To justify for this process, the intuition is that, in a realistic QnA setting, 
 ### Prepare dataset
 
 ### Run evaluation 
+
+## Contributions
+
+Nothing here yet...
