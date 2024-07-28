@@ -4,22 +4,22 @@
 
 Retrieval Augmented Generation (RAG) has gained popularity as a method to incorporate non-parametric memory space to LLM agents, allowing them to gain access to more knowledge while avoiding the computational overhead from fine-tuning. RAG operates by retrieving relevant documents and augmenting them as the grounding context to every user input, thereby helping to enhance LLM's response accuracy and relevance. This is particularly powerful in knowlege-intensive tasks such as question answering.
 
-However, RAG systems may fail to obtain relevant context when human queries become too complex, resulting in poor answers. The core problem is that semantic search engines rely on the contextual similarity between the question and the documents rather than verifying the presence of answers. As a result, a document might be contextually relevant but may lack the precise information needed to address the question. To address this, there has been a research direction aiming to improve the context retrieval process by developing advanced corrective methods to address scenarios where the retrieval performance is poor. This includes utilizing web search when the retrieved context is incorrect to the query, or forming a query rewriting loop until context retrieval is satisfied, etc. However, in a sense, such methods are not truly "corrective":
+However, RAG systems may fail to obtain relevant context when human queries become too complex, resulting in poor answers. The core problem is that semantic search engines rely on the contextual similarity between the question and the documents rather than verifying the presence of answers. As a result, a document might be contextually relevant but lack the information needed to answer the question. In light of this, there has been a research direction aiming to develop corrective methods to address scenarios where the retrieval performance is poor. This includes utilizing web search when the retrieved context is incorrect to the query, or forming a query rewriting loop until context retrieval is satisfied, etc. However, in a sense, most of these are not truly "corrective":
 
 - Methods similar to utilizing knowledge base extension such as web search is not truly corrective. They merely allow agents to gain access to a larger knowledge base, which clearly can still result in bad context retrieval.
-- Generally, these methods will go through the very same "advanced retrieval process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the very same problem again, which can be highly inefficient.
+- Generally, these methods will go through another "corrective process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the same problem again rather than leaving some kind of trajectory for future similar problems to follow, which can be quite inefficient.
 
 To deal with these issues, we introduce Q-RAG, a corrective RAG paradigm helping to address the core problem of context retrieval. 
 
 #### General Idea of Q-RAG:
 
-Q-RAG revolves around using "model questions" for context retrieval. To explain, these "model questions" are examples of questions that can be answered by certain chunks. To express this relationships, the model questions are linked to these chunks. During the retrieval process, the input question can be matched with these model questions, returning relevant chunks connected to them. 
+Q-RAG revolves around using "model questions" for context retrieval. These "model questions" are examples of questions that can be answered by certain chunks. To express this relationships, the model questions are linked to chunks containing the answer. During the retrieval process, new input questions can then be matched with similar model questions, returning the connected chunks. 
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-idea.png" width=65%>
 </div>
 
-Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. This approach is better than solely relying on generic chunk retrieval, which may fail to obtain high-quality chunks when the question becomes too complex. 
+Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. Intuitively, this approach is better than solely relying on generic chunk retrieval, which may fail to obtain high-quality chunks when the question becomes too complex. 
 
 #### Corrective Process:
 
