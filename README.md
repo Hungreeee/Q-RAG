@@ -29,7 +29,7 @@ Q-RAG allows user questions to be directly matched with examples of questions th
 
 With this unique retrieval process, Q-RAG allows poor answers to be corrected. Here is one scenario of how this might play out:
 
-- The RAG retriever did not manage to retrieve relevant context from the database. 
+- The RAG retriever fails to retrieve relevant context from the database. 
 - Poor context leads to poor answers. These cases can be detected by some evaluation method such as metric tracking, poor user rating, etc. 
 - An external source (e.g., human evaluator) provides the corrected context chunks. This can be achieved by providing corrected answer, then use it to search for relevant chunks (using semantic search, BM-25, etc.). The intuition is that utilizing the ground truth answers (instead of the query) for retrieval will result in chunks with a considerably higher chance of containing true answers. 
 - Connect the initial question to the corrected chunks, then append them to the database.
@@ -39,7 +39,7 @@ In a realistic QnA setting, new questions would start to appear less with time. 
 
 ## Demo
 
-A simple Q-RAG demo developed using langchain can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb).
+A small Q-RAG demo developed using langchain can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb).
 
 ## Run Q-RAG
 
