@@ -35,7 +35,11 @@ With this unique retrieval process, Q-RAG allows poor answers to be corrected. H
 - Connect the initial question to the corrected chunks, then append them to the database.
 - Next time, when users ask similar questions, the retriever can match the input question with the new model question, returning the connected chunks.
 
-In a realistic QnA setting, new questions would start to appear less with time. As such, with Q-RAG, the situation will eventually somewhat converge to the scenario where every complex question can be handled by this method. Moreover, with a simple approach, Q-RAG can easily be integrated into any existing RAG pipeline.
+#### Benefits:
+
+- With a simple set-up, Q-RAG is efficient in terms of cost/time and can be easily adapted to any existing RAG pipelines.
+- Q-RAG addresses the poor context retreival problem for hard questions that previously cannot be handled with vanilla retrieval. 
+- In a realistic QnA setting, new questions would start to appear less with time. Therefore, intuitively, the situation will somewhat converge to the scenario where every complex question can be handled by Q-RAG.
 
 ## Demo
 
