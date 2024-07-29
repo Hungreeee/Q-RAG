@@ -19,7 +19,7 @@ Q-RAG revolves around using "model questions" for context retrieval. These "mode
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-idea.png" width=65%>
 </div>
 
-In addition to prodive relevant chunks (using vanilla retrieval), Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. This approach ensures that the LLM generator will not only recieve contextually relevant chunks but also chunks that contains answers. 
+In addition to prodive relevant chunks (using vanilla retrieval), Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. This approach ensures that the LLM generator can recieve not only contextually relevant chunks but also chunks that contains answers. 
 
 #### Corrective Process:
 
