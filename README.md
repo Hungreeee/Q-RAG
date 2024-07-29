@@ -9,7 +9,7 @@ However, RAG systems may fail to obtain relevant context when human queries beco
 - Methods similar to utilizing knowledge base extension such as web search is not truly corrective. They merely allow agents to gain access to a larger knowledge base, which clearly can still result in bad context retrieval.
 - Generally, these methods will go through another "corrective process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the same problem again rather than leaving some kind of trajectory for future similar problems to follow, which can be quite inefficient in terms of cost and time. 
 
-To address these issues, we introduce Q-RAG, a corrective RAG paradigm that enables external intervention (e.g., human annotators) to help prevent the system from repeating bad answers.
+To address these issues, we introduce Q-RAG, a corrective RAG paradigm that enables external intervention (e.g., human annotators) to help prevent the system from repeating bad answers. 
 
 #### Core Mechanism:
 
@@ -37,13 +37,13 @@ With this unique retrieval process, Q-RAG allows LLM's answers to be corrected w
 
 #### Benefits:
 
-- With a simple set-up, Q-RAG is efficient in terms of cost/time and can be easily adapted to any existing RAG pipelines.
-- Q-RAG allows a sort of "continual learning" mechanism by allowing humans to correct poor answers, helping the agent not making the same mistake. 
+- With a simple set-up, Q-RAG is efficient in terms of cost and can be easily adapted to any existing RAG pipelines.
+- Q-RAG allows a sort of "continual learning" mechanism by allowing humans to correct answers and address poor retrieval, helping the agent avoid making the same mistake when similar question patterns are asked. 
 - In a realistic QnA setting, new questions would start to appear less with time. Therefore, intuitively, the situation will somewhat converge to the scenario where every complex question can be handled by Q-RAG.
 
 ## Demo
 
-A small Q-RAG demo developed using langchain can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb).
+A simple Q-RAG demo can be found in this [notebook](https://github.com/Hungreeee/Q-RAG/blob/main/demo/demo_notebook_squad.ipynb).
 
 ## Run Q-RAG
 
