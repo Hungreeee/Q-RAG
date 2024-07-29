@@ -9,17 +9,17 @@ However, RAG systems may fail to obtain relevant context when human queries beco
 - Methods similar to utilizing knowledge base extension such as web search is not truly corrective. They merely allow agents to gain access to a larger knowledge base, which clearly can still result in bad context retrieval.
 - Generally, these methods will go through another "corrective process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the same problem again rather than leaving some kind of trajectory for future similar problems to follow, which can be quite inefficient in terms of cost and time. 
 
-To deal with these issues, we introduce Q-RAG, a corrective RAG paradigm helping to address the core problem of context retrieval. 
+To address these issues, we introduce Q-RAG, a corrective RAG paradigm that enables external intervention (e.g., human annotators) to help prevent the system from repeating bad answers.
 
-#### General Idea of Q-RAG:
+#### Core Mechanism:
 
-Q-RAG revolves around using "model questions" for context retrieval. These "model questions" are examples of questions that can be answered by certain chunks. To express this relationships, the model questions are linked to chunks containing the answer. During the retrieval process, new input questions can then be matched with similar model questions, returning the connected chunks. 
+Q-RAG revolves around using "model questions" for context retrieval. These "model questions" are examples of questions that can be answered by certain chunks. To express this relationships, the model questions are linked to chunks containing the answer. During the retrieval process, new input questions can be matched with similar model questions, returning the connected chunks. 
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-idea.png" width=65%>
 </div>
 
-Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. Intuitively, this approach is better than solely relying on generic chunk retrieval, which may fail to obtain high-quality chunks when the question becomes too complex. 
+In addition to prodive relevant chunks (using vanilla retrieval), Q-RAG allows user questions to be directly matched with examples of questions that could already be answered. This approach ensures that the LLM generator will not only recieve contextually relevant chunks but also chunks that contains answers. 
 
 #### Corrective Process:
 
@@ -27,18 +27,18 @@ Q-RAG allows user questions to be directly matched with examples of questions th
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
 </div>
 
-With this unique retrieval process, Q-RAG allows poor answers to be corrected. Here is one scenario of how this might play out:
+With this unique retrieval process, Q-RAG allows LLM's answers to be corrected with a human-in-the-loop process. Here is one scenario of how this might play out:
 
 - The RAG retriever fails to retrieve relevant context from the database. 
 - Poor context leads to poor answers. These cases can be detected by some evaluation method such as metric tracking, poor user rating, etc. 
-- An external source (e.g., human evaluator) provides the corrected context chunks. This can be achieved by providing corrected answer, then use it to search for relevant chunks (using semantic search, BM-25, etc.). The intuition is that utilizing the ground truth answers (instead of the query) for retrieval will result in chunks with a considerably higher chance of containing true answers. 
+- An external source (e.g., human evaluator) provides the corrected context chunks. This can be achieved by providing corrected answer, then use it to search for relevant chunks (using semantic search, BM-25, etc.). The intuition is that having the ground truth answers for retrieval will result in chunks with considerably higher chances of containing the true answers. 
 - Connect the initial question to the corrected chunks, then append them to the database.
-- Next time, when users ask similar questions, the retriever can match the input question with the new model question, returning the connected chunks.
+- Next time, when similar questions are asked, the retriever can match the input question with the new model question, returning the connected chunks (plus chunks from vanilla RAG).
 
 #### Benefits:
 
 - With a simple set-up, Q-RAG is efficient in terms of cost/time and can be easily adapted to any existing RAG pipelines.
-- Q-RAG addresses the poor context retreival problem for hard questions that previously cannot be handled with vanilla retrieval. 
+- Q-RAG allows a sort of "continual learning" mechanism by allowing humans to correct poor answers, helping the agent not making the same mistake. 
 - In a realistic QnA setting, new questions would start to appear less with time. Therefore, intuitively, the situation will somewhat converge to the scenario where every complex question can be handled by Q-RAG.
 
 ## Demo
