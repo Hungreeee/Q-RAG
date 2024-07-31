@@ -9,7 +9,7 @@ However, RAG systems may fail to obtain relevant context when human queries beco
 - Methods similar to utilizing knowledge base extension such as web search is not truly corrective. They merely allow agents to gain access to a larger knowledge base, which clearly can still result in bad context retrieval.
 - Generally, these methods will go through another "corrective process" everytime the same complex question (or similar variants of it) is provided. In other words, they will try to solve the same problem again rather than leaving some kind of trajectory for future similar problems to follow, which can be quite inefficient in terms of cost and time. 
 
-To address these issues, we introduce Q-RAG, a corrective RAG paradigm that enables answer correction from external intervention (e.g., human annotators) to help prevent repeating bad retrieval. 
+To address these issues, we introduce Q-RAG, a corrective RAG paradigm that enables answer correction from external intervention (e.g., human annotators) to prevent the agent from repeating bad retrieval. 
 
 #### Question-based Retrieval:
 
