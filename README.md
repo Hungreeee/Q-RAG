@@ -30,8 +30,8 @@ With this retrieval approach, Q-RAG allows the poor context retrieval results to
 </div>
 
 - The RAG retriever fails to retrieve relevant context from the database. 
-- Poor context leads to poor answers. These cases can be detected by some evaluation method such as metric tracking, poor user rating, etc. 
-- An external source (e.g., human evaluator) provides the corrected context chunks. This can be achieved by providing corrected answer, then use it to search for relevant chunks (using semantic search, BM-25, etc.). The intuition is that having the ground truth answers for retrieval will result in chunks with considerably higher chances of containing the true answers. 
+- Poor context leads to poor answers. These can be detected by some evaluation method such as metric tracking, low user rating, etc. 
+- An external source (e.g., human evaluator) provides the corrected context chunks. This can be achieved by providing the corrected answer, then use it to search for relevant chunks (using semantic search, BM-25, etc.). The intuition is that having the ground truth answers for retrieval will result in chunks with considerably higher chances of containing the true answers. 
 - Connect the initial question to the corrected chunks, then append them to the database.
 - Next time, when similar questions are asked, the retriever can match the input question with the new model question, returning the connected chunks (plus chunks from vanilla RAG).
 
@@ -40,8 +40,8 @@ In the scenario above, it is possible to see the agent can somewhat "continually
 #### Benefits:
 
 - With a simple set-up, Q-RAG is efficient in terms of cost and can be easily adapted to any existing RAG pipelines.
-- Q-RAG allows a sort of learning mechanism by allowing humans to address poor retrieval, helping the agent avoid making the same mistake when similar question patterns are asked. 
-- In a realistic QnA setting, new questions would start to appear less with time. Therefore, intuitively, the situation will somewhat converge to the scenario where every complex question can be handled by Q-RAG.
+- Q-RAG allows humans to address poor retrieval, helping the agent avoid making the same mistake when similar question patterns are asked. 
+- In certain QnA settings, new questions would start to appear less with time. Therefore, intuitively, the situation will somewhat converge to the scenario where every complex question can be handled by Q-RAG.
 
 ## Demo
 
