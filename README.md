@@ -23,7 +23,7 @@ This question-based approach allows user questions to be directly matched with e
 
 #### Corrective Process:
 
-With this retrieval approach, Q-RAG allows the poor context retrieval results to be corrected with a human-in-the-loop process. Here is one scenario of how this might play out:
+The key question here is how the model generates these model questions and establishes connections between them and relevant chunks of information. Q-RAG addresses this by enabling a "corrective" process, where complex questions leading to poor answers are refined or "corrected" by linking them to appropriate information chunks. Here's how this may play out:
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
