@@ -23,7 +23,7 @@ This question-based approach allows user questions to be directly matched with e
 
 #### Corrective Process:
 
-The key question here is how the model generates these model questions and establishes connections between them and relevant chunks of information. Q-RAG addresses this by enabling a "corrective" process, where complex questions leading to poor answers are refined or "corrected" by linking them to appropriate information chunks. Here's how this may play out:
+The key question here is how the model generates these model questions and links them to relevant information chunks. Q-RAG addresses this using a "corrective" process, where complex questions leading to poor answers are "corrected" by by incorporating the ground truth answer. This allows the retrieve to obtain the more accurate and relevant information chunks. Here's a more detailed look of this can play out:
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
@@ -35,7 +35,7 @@ The key question here is how the model generates these model questions and estab
 - Connect the initial question to the corrected chunks, then append them to the database.
 - Next time, when similar questions are asked, the retriever can match the input question with the new model question, returning the connected chunks (plus chunks from vanilla RAG).
 
-In the scenario above, it is possible to see the agent can somewhat "continually learn" from corrected question-chunks to obtain better chunks when similar input are met next time. With this corrective mechanism, it is possible to simulate some kind of "training" for the RAG retriever. For instance, before deploying a Q-RAG chatbot, one can start out by ingesting a model question-answering dataset on their documents into the corrective process. This enables the Q-RAG retriever to "learn" question-chunk connections, allowing it to correctly handle similar questions that potentially will appear in the future. 
+In the scenario above, it is possible to observe the agent can somewhat "learn" from corrected question-chunks to obtain better chunks when similar input are met next time. With this corrective mechanism, it is possible to simulate some kind of "training" for the RAG retriever. For instance, before deploying a Q-RAG chatbot, one can start out by ingesting a model question-answering dataset on their documents into the corrective process. This enables the Q-RAG retriever to "learn" question-chunk connections, allowing it to correctly handle similar questions that potentially will appear in the future. 
 
 #### Benefits:
 
