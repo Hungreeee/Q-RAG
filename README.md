@@ -35,7 +35,7 @@ But how can the system generate these "model questions" and link them to relevan
 - Connect the initial question to the corrected chunks, then append them to the database.
 - Next time, when similar questions are asked, the retriever can match the input question with the new model question, returning the connected chunks (plus chunks from vanilla RAG).
 
-In the scenario above, it is possible to observe the agent can somewhat "learn" from corrected question-chunks to obtain better chunks when similar input are met next time. With this corrective mechanism, it is possible to simulate some kind of "training" for the RAG retriever. For instance, before deploying a Q-RAG chatbot, one can start out by ingesting a model question-answering dataset on their documents into the corrective process. This enables the Q-RAG retriever to "learn" question-chunk connections, allowing it to correctly handle similar questions that potentially will appear in the future. 
+In the scenario above, it is possible to observe that the agent can somewhat "learn" from corrected question-chunks to retrieve better when similar input are met next time. With this mechanism, it is possible to simulate some kind of "training" for the RAG retriever. For instance, before deploying a Q-RAG chatbot, one can start out by ingesting a model question-answering dataset on their documents into the corrective process. This enables the Q-RAG retriever to "learn" question-chunk connections, allowing it to correctly handle similar questions that potentially will appear in the future. 
 
 #### Benefits:
 
