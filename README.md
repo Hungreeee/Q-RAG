@@ -8,7 +8,7 @@ To address these issues, we introduce Q-RAG, a novel corrective RAG paradigm tha
 
 ## Overview
 
-The idea of Q-RAG is straightforward. In the database, we first create "model questions" and link them to chunks that contain their answers. During the retrieval process, Q-RAG then search for model questions similar to the input query, returning the connected chunks. This question-based approach allows user questions to be directly matched with examples of questions that could already be answered.
+The idea of Q-RAG is straightforward. In the database, we first create "model questions" and link them to chunks containing their answers. During the retrieval process, Q-RAG can then search for model questions similar to the input query and return the connected chunks. This question-based retrieval approach allows user questions to be directly matched with examples of questions that could already be answered.
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-idea.png" width=65%>
