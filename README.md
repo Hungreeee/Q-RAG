@@ -23,7 +23,7 @@ This question-based approach allows user questions to be directly matched with e
 
 #### Corrective Process:
 
-The key question here is how the model generates these model questions and links them to relevant information chunks. Q-RAG addresses this using a "corrective" process, where complex questions leading to poor answers are "corrected" by by incorporating the ground truth answer. This allows the retrieve to obtain the more accurate and relevant information chunks. Here's a more detailed look of this can play out:
+But how can the system generate these "model questions" and link them to relevant information chunks in the first place? Q-RAG improves its retrieval process by "correcting" poor context retrieval using ground truth answers. This adjustment helps it obtain better context for similar questions in the future. Here's a more detailed look of this plays out:
 
 <div align="center">
   <img src="https://github.com/Hungreeee/Q-RAG/blob/main/images/q-rag-process.png">
