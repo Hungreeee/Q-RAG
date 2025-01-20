@@ -1,6 +1,6 @@
-from retriever import BaseRetriever
-from llm_agent import BaseAgent
-from configs import RAGConfig
+from src.retriever import BaseRetriever
+from src.llm_agent import BaseAgent
+from src.configs import RAGConfig
 
 
 class RAGPipeline:

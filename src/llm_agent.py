@@ -1,9 +1,11 @@
 import os
 from typing import List
-from configs import LLMConfig
-from langchain.prompts import ChatPromptTemplate
+
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_ollama.chat_models import ChatOllama
+
+from src.configs import LLMConfig
+
 from dotenv import load_dotenv
 
 load_dotenv()

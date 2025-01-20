@@ -4,12 +4,14 @@ langchain-huggingface
 langchain-community
 langchain-openai
 langchain-ollama
+langchain-qdrant
 langchain-neo4j
 streamlit
 openai
 neo4j
 pandas
 faiss-cpu
+qdrant-client
 unstructured
 unstructured[pdf]
 ipykernel
