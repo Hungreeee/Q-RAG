@@ -1,0 +1,15 @@
+langchain
+langchain-core
+langchain-huggingface
+langchain-community
+langchain-openai
+langchain-ollama
+langchain-neo4j
+streamlit
+openai
+neo4j
+pandas
+faiss-cpu
+unstructured
+unstructured[pdf]
+ipykernel
