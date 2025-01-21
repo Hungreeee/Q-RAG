@@ -21,7 +21,9 @@ class RAGPipeline:
 
     def query(self, query: str):
         retrieved_documents = self.retriever.retrieve(query, top_k=self.config.top_k) 
-        documents_content_string = "\n\n".join(doc for doc in retrieved_documents)
+        documents_content_string = "\n\n".join(
+            f"Source: {doc.metadata['source']}\nContent: {doc.page_content}" for doc in retrieved_documents
+        )
 
         rag_messages = [
             ("system", self.config.system_message),
@@ -30,4 +32,4 @@ class RAGPipeline:
         ]
 
         response = self.llm_generator.generate(rag_messages) 
-        return response
+        return response.content, retrieved_documents

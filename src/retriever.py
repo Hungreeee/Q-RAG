@@ -19,7 +19,7 @@ load_dotenv()
 
 class BaseRetriever(ABC):
     def __init__(self, config: RetrieverConfig):
-        super.__init__()
+        super().__init__()
 
         self.config = config
 
@@ -29,7 +29,7 @@ class BaseRetriever(ABC):
         )
 
     @abstractmethod
-    def retrieve(self, query: str, k: int):
+    def retrieve(self, query: str, top_k: int):
         pass
 
     @abstractmethod
@@ -42,20 +42,27 @@ class BaseRetriever(ABC):
 
 
 class SimpleVectorRetriever(BaseRetriever):
-    def __init__(self, vectorstore_path: str):
-        self.vectorstore_path = vectorstore_path
+    def __init__(
+        self, 
+        config: RetrieverConfig, 
+        vectorstore_path: str = None,
+    ):
+        super().__init__(config)
 
-        if os.path.exists(vectorstore_path):
+        self.vectorstore = None
+
+        if vectorstore_path and os.path.exists(vectorstore_path):
             self.vectorstore = FAISS.load_local(
                 folder_path=vectorstore_path, 
                 embeddings=self.embedding_model,
                 allow_dangerous_deserialization=True,
             )
-        else:
-            self.vectorstore = FAISS.from_documents([], self.embedding_model)
-            self.vectorstore.save_local(vectorstore_path)
 
-    def ingest(self, documents: List[dict]):
+    def ingest(
+        self, 
+        documents: List[dict], 
+        vectorstore_path: str = "./vectorstore/"
+    ):
         documents_langchain = []
 
         for doc in documents:
@@ -69,23 +76,30 @@ class SimpleVectorRetriever(BaseRetriever):
             chunk_size=self.config.chunk_size, 
             chunk_overlap=self.config.chunk_overlap,
         )
-
         document_chunks = text_splitter.split_documents(documents_langchain)
-        embeddings = self.embedding_model.embed_documents(document_chunks)
 
-        self.vectorstore.add_documents(document_chunks, embeddings)
-        self.vectorstore.save_local(self.vectorstore_path)
+        self.vectorstore = FAISS.from_documents(
+            documents=document_chunks, 
+            embedding=self.embedding_model
+        )
+        self.vectorstore.save_local(vectorstore_path)
         
-    def retrieve(self, query: str, k: int):
-        relevant_docs = self.vectorstore.similarity_search(query=query, k=k)
+    def retrieve(self, query: str, top_k: int = 5):
+        relevant_docs = self.vectorstore.similarity_search(query=query, k=top_k)
         return relevant_docs
+    
+    def reset(self):
+        pass
 
 
 class QdrantRetriever(BaseRetriever):
     def __init__(
-        self,
-        base_url: str = "http://localhost:6333",
+        self, 
+        config: RetrieverConfig, 
+        base_url: str = "http://localhost:6333"
     ):
+        super(config).__init__()
+
         self.client = QdrantClient(url=base_url)
         self._ensure_collection_exists()
 
@@ -133,7 +147,7 @@ class QdrantRetriever(BaseRetriever):
     def retrieve(
         self, 
         query: str, 
-        top_k: int,
+        top_k: int = 5,
         filter: models.Filter = None,
     ):
         retrieve_documents = self.vectorstore.similarity_search(
@@ -146,11 +160,19 @@ class QdrantRetriever(BaseRetriever):
 
 
 class GraphRetriever(BaseRetriever):
-    def __init__(self):
+    def __init__(self, config: RetrieverConfig):
+        super().__init__()
         pass
     
     def ingest(self, documents: List[dict]): 
         # Task: Design graph parser engine
+        pass
+
+    def retrieve(self, query: str, top_k: int = 5): 
+        # Task: Design graph retriever engine
+        pass
+
+    def reset(self): 
         pass
 
     

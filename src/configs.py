@@ -11,6 +11,7 @@ class RetrieverConfig:
 
 @dataclass
 class LLMConfig:
+    model: str = "gpt-4o-mini"
     temperature: int = None
     top_p: int = None
 
