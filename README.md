@@ -17,4 +17,11 @@ Install the required dependencies:
 pip install -r requirements.txt
 ```
 
+Make sure to download [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/). This is important to host our database / local LLM.
+
+After this, simply do this to start up the database:
+```
+docker-compose up
+```
+
 You are all set!
