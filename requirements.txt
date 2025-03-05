@@ -2,13 +2,12 @@ langchain
 langchain-core
 langchain-huggingface
 langchain-community
+langchain-experimental
 langchain-openai
 langchain-ollama
 langchain-qdrant
-langchain-neo4j
 streamlit
 openai
-neo4j
 pandas
 faiss-cpu
 qdrant-client
@@ -16,3 +15,5 @@ unstructured
 unstructured[pdf]
 ipykernel
 tika
+json-repair
+python-dotenv
