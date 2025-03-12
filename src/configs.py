@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class RetrieverConfig:
-    chunk_size: int = 1000
-    chunk_overlap: int = 500
+    chunk_size: int = 1500
+    chunk_overlap: int = 1000
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dim: int = 384
     device: str = "cpu"

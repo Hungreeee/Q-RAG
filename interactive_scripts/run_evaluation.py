@@ -1,0 +1,151 @@
+# %%
+import glob
+from tqdm import tqdm
+import pandas as pd
+
+from src.llm_agent import OpenAIAgent
+from src.retriever import QdrantRetriever
+from src.rag_pipeline import RAGPipeline, QRAGPipeline
+
+from ragas import evaluate
+from ragas.dataset_schema import EvaluationDataset
+from ragas.metrics import Faithfulness, ContextRecall, ContextPrecision, ResponseRelevancy
+
+# %%
+def preprocess_data(df):
+    """Preprocess QnA dataframes"""
+    # Remove reasoning questions (not within the scope of our project)
+    df = df[~df["question_type"].isin(["multi reasoning", "single reasoning"])]
+
+    # Construct ground-truth chunk list
+    df["answer_spans"] = df[[f"answer_span_{idx}" for idx in range(1, 6)]].values.tolist()
+    df["answer_spans"] = df["answer_spans"].apply(lambda row: [x for x in row if pd.notna(x)])
+    df["answer_spans"] = df["answer_spans"].apply(lambda row: [x.replace("\r", " ") for x in row])
+
+    # Remove questions without evidence to support
+    df = df[~((pd.isna(df["answer_span_1"])) & (df["question_type"] != "no answer"))]
+
+    # Drop redundant columns
+    df = df.drop([f"reasoning_step_{idx}" for idx in range(1, 6)], axis="columns")
+    df = df.drop([f"answer_span_{idx}" for idx in range(1, 6)], axis="columns")
+
+    df["chunks"] = df["answer_spans"]
+    return df
+
+
+def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFrame, truncation_threshold=5):
+    """Converts the clues given as answer spans into actual chunks"""
+    df_dataset_ = df_dataset.copy()
+
+    for idx, row in tqdm(df_dataset_.iterrows()):
+        ground_truth_clues = row["answer_spans"]
+        ground_truth_chunks = []
+
+        for clue in ground_truth_clues:
+            chunk = retriever.retrieve_exact(clue)
+            while not chunk and len(clue.split()) > truncation_threshold:
+                clue = clue[:len(clue) // 2]
+                chunk = retriever.retrieve_exact(clue)
+            ground_truth_chunks.extend(chunk)
+        print(len(ground_truth_chunks))
+        df_dataset_.at[idx, "chunks"] = ground_truth_chunks
+        break
+    return df_dataset_
+
+
+def get_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame):
+    """Collect answers into a dataset for evaluation"""
+    df_dataset_ = df_dataset.copy()
+    answer_list = []
+
+    for _, row in tqdm(df_dataset_.iterrows()):
+        question = row["question"]
+        ground_truth_answer = row["answer"]
+        ground_truth_chunks = row["chunks"]
+        ground_truth_chunks = [chunk.page_content for chunk in ground_truth_chunks]
+
+        answer, retrieved_chunks = rag_pipeline.query(question)
+        retrieved_chunks = [chunk.page_content for chunk in retrieved_chunks]
+
+        answer_list.append({
+            "user_input": question,
+            "retrieved_contexts": retrieved_chunks,
+            "response": answer,
+            "reference": [ground_truth_answer],
+            "reference_contexts": ground_truth_chunks,
+        })
+
+    answer_dataset = EvaluationDataset.from_list(answer_list)
+    return answer_dataset
+
+# %%
+# Read context documents
+files = glob.glob("./data/SyllabusQA/syllabi/**/*.txt", recursive=True)
+
+documents = []
+
+for idx, file_path in enumerate(files):
+    with open(file_path, "r", encoding="latin-1") as f:
+        raw_text = f.read()
+
+    course_name = file_path.split("\\")[-1][:-4].strip()
+
+    documents.append({
+        "page_content": raw_text,
+        "parent_id": idx,
+        "syllabus": course_name,
+        "source": file_path,
+    })
+
+documents
+
+# %%
+# Read QA test set
+df_test = pd.read_csv("./data/SyllabusQA/data/dataset_split/test.csv")
+df_test = preprocess_data(df_test)
+
+df_train = pd.read_csv("./data/SyllabusQA/data/dataset_split/train.csv")
+df_train = preprocess_data(df_train)
+
+df_val = pd.read_csv("./data/SyllabusQA/data/dataset_split/val.csv")
+df_val = preprocess_data(df_val)
+
+# %%
+# Set up models
+chunk_retriever = QdrantRetriever(collection_name="chunks")
+question_retriever = QdrantRetriever(collection_name="questions")
+
+llm_agent = OpenAIAgent()
+
+naive_rag_pipeline = RAGPipeline(
+    retriever=chunk_retriever,
+    llm_generator=llm_agent,
+)
+
+qrag_pipeline = QRAGPipeline(
+    question_retriever=question_retriever,
+    chunk_retriever=chunk_retriever,
+    llm_generator=llm_agent,
+)
+
+# %%
+# Ingest documents into database
+chunk_retriever.reset()
+chunk_retriever.ingest(documents)
+
+# %%
+# Convert clues into chunks
+df_test = preprocess_curate_chunks(chunk_retriever, df_test)
+df_test
+
+# %%
+answer_dataset = get_answer_dataset(naive_rag_pipeline, df_test)
+
+# %%
+result_df = evaluate(
+    answer_dataset, 
+    metrics=[Faithfulness(), ContextRecall(), ContextPrecision(), ResponseRelevancy()], 
+    llm=llm_agent
+)
+
+result_df

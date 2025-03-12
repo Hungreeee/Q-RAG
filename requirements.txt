@@ -1,3 +1,4 @@
+ragas
 langchain
 langchain-core
 langchain-huggingface
@@ -9,11 +10,8 @@ langchain-qdrant
 streamlit
 openai
 pandas
-faiss-cpu
 qdrant-client
 unstructured
-unstructured[pdf]
 ipykernel
-tika
 json-repair
 python-dotenv

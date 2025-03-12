@@ -3,7 +3,7 @@ import uuid
 from typing import List, Dict
 
 from qdrant_client import QdrantClient, models
-from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchValue
+from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchText
 
 from langchain.schema.document import Document
 from langchain_qdrant import QdrantVectorStore
@@ -127,11 +127,11 @@ class QdrantRetriever(BaseRetriever):
         filter: models.Filter = None,
     ):
         retrieve_documents = self.vectorstore.similarity_search(
-            query=query, 
+            query="*", 
             k=1, 
             filter=Filter(
                 must=[
-                    FieldCondition(key="page_content", match=MatchValue(value=query)),
+                    FieldCondition(key="page_content", match=MatchText(text=query)),
                 ]
             )
         )
