@@ -1,4 +1,4 @@
-ragas
+deepeval
 langchain
 langchain-core
 langchain-huggingface

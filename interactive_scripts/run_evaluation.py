@@ -1,15 +1,24 @@
 # %%
 import glob
+import httpx
 from tqdm import tqdm
 import pandas as pd
+from dotenv import load_dotenv
 
-from src.llm_agent import OpenAIAgent
+from src.llm_agent import AzureAIAgent, LLMJudge, update_base_url
 from src.retriever import QdrantRetriever
 from src.rag_pipeline import RAGPipeline, QRAGPipeline
 
-from ragas import evaluate
-from ragas.dataset_schema import EvaluationDataset
-from ragas.metrics import Faithfulness, ContextRecall, ContextPrecision, ResponseRelevancy
+# from ragas import evaluate
+# from ragas.llms import LangchainLLMWrapper
+# from ragas.dataset_schema import EvaluationDataset
+# from ragas.metrics import Faithfulness, ContextRecall, ContextPrecision, ResponseRelevancy
+
+from deepeval import evaluate
+from deepeval.metrics import FaithfulnessMetric, ContextualRecallMetric
+from deepeval.test_case import LLMTestCase
+
+load_dotenv()
 
 # %%
 def preprocess_data(df):
@@ -29,7 +38,7 @@ def preprocess_data(df):
     df = df.drop([f"reasoning_step_{idx}" for idx in range(1, 6)], axis="columns")
     df = df.drop([f"answer_span_{idx}" for idx in range(1, 6)], axis="columns")
 
-    df["chunks"] = df["answer_spans"]
+    df["chunks"] = df["answer_spans"].apply(lambda row: [])
     return df
 
 
@@ -47,9 +56,11 @@ def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFram
                 clue = clue[:len(clue) // 2]
                 chunk = retriever.retrieve_exact(clue)
             ground_truth_chunks.extend(chunk)
-        print(len(ground_truth_chunks))
+
+        ground_truth_chunks = list({chunk.metadata["chunk_id"]: chunk for chunk in ground_truth_chunks}.values())
         df_dataset_.at[idx, "chunks"] = ground_truth_chunks
-        break
+
+    df_dataset_ = df_dataset_.reset_index(drop=True)
     return df_dataset_
 
 
@@ -59,24 +70,30 @@ def get_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame):
     answer_list = []
 
     for _, row in tqdm(df_dataset_.iterrows()):
+        syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
         ground_truth_chunks = row["chunks"]
         ground_truth_chunks = [chunk.page_content for chunk in ground_truth_chunks]
 
-        answer, retrieved_chunks = rag_pipeline.query(question)
+        answer, retrieved_chunks = rag_pipeline.query(question, syllabus)
+        retrieved_chunks = list({chunk.metadata["chunk_id"]: chunk for chunk in retrieved_chunks}.values())
         retrieved_chunks = [chunk.page_content for chunk in retrieved_chunks]
 
-        answer_list.append({
-            "user_input": question,
-            "retrieved_contexts": retrieved_chunks,
-            "response": answer,
-            "reference": [ground_truth_answer],
-            "reference_contexts": ground_truth_chunks,
-        })
+        answer_list.append(LLMTestCase(
+            input=question,
+            actual_output=answer,
+            expected_output=ground_truth_answer,
+            context=ground_truth_chunks,
+            retrieval_context=retrieved_chunks,
+        ))
 
-    answer_dataset = EvaluationDataset.from_list(answer_list)
-    return answer_dataset
+    return answer_list
+
+
+def construct_loop_qrag_dataset(answer_df: pd.DataFrame):
+    pass
+
 
 # %%
 # Read context documents
@@ -111,11 +128,16 @@ df_val = pd.read_csv("./data/SyllabusQA/data/dataset_split/val.csv")
 df_val = preprocess_data(df_val)
 
 # %%
+df_test_slice = df_test.tail(5)
+df_test_slice
+
+# %%
 # Set up models
 chunk_retriever = QdrantRetriever(collection_name="chunks")
 question_retriever = QdrantRetriever(collection_name="questions")
 
-llm_agent = OpenAIAgent()
+llm_agent = AzureAIAgent()
+llm_judge = LLMJudge()
 
 naive_rag_pipeline = RAGPipeline(
     retriever=chunk_retriever,
@@ -135,17 +157,37 @@ chunk_retriever.ingest(documents)
 
 # %%
 # Convert clues into chunks
-df_test = preprocess_curate_chunks(chunk_retriever, df_test)
-df_test
+df_test_slice = preprocess_curate_chunks(chunk_retriever, df_test_slice)
+df_test_slice
 
 # %%
-answer_dataset = get_answer_dataset(naive_rag_pipeline, df_test)
+answer_dataset = get_answer_dataset(naive_rag_pipeline, df_test_slice)
+answer_dataset
 
 # %%
+faithfulness = FaithfulnessMetric(
+    model=llm_judge,
+)
+
+context_recall = ContextualRecallMetric(
+    model=llm_judge,
+)
+
 result_df = evaluate(
     answer_dataset, 
-    metrics=[Faithfulness(), ContextRecall(), ContextPrecision(), ResponseRelevancy()], 
-    llm=llm_agent
+    metrics=[faithfulness, context_recall], 
+    ignore_errors=False,
+    show_indicator=True,
 )
 
 result_df
+
+# %%
+result_df.test_results
+
+# %%
+answer_dataset = get_answer_dataset(qrag_pipeline, df_test)
+
+# %%
+curated_loop_qrag_dict = construct_loop_qrag_dataset(result_df)
+qrag_pipeline.loop_qrag(curated_loop_qrag_dict)
