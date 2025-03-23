@@ -111,10 +111,7 @@ class LLMJudge(DeepEvalBaseLLM):
         return self.client
     
     def generate(self, prompt: str):
-        response = self.client.invoke([
-            ("system", self.config.model),
-            ("user", prompt)
-        ])
+        response = self.client.invoke(prompt)
         return response.content
     
     async def a_generate(self, prompt: str):
