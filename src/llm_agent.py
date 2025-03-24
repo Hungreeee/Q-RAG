@@ -17,7 +17,7 @@ load_dotenv()
 def update_base_url(request: httpx.Request, model: str):
     if request.url.path == "/chat/completions":
         if model == "gpt-4o":
-            request.url = request.url.copy_with(path="/v1/openai/gpt4o/chat/completions")
+            request.url = request.url.copy_with(path="/v1/openai/deployments/gpt-4o-2024-08-06/chat/completions")
         elif model == "gpt-35-turbo":
             request.url = request.url.copy_with(path="/v1/chat/")
         elif model == "gpt-4-turbo":

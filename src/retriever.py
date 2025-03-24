@@ -126,14 +126,19 @@ class QdrantRetriever(BaseRetriever):
         query: str, 
         filter: models.Filter = None,
     ):
+        base_filter = Filter(
+            must=[
+                FieldCondition(key="page_content", match=MatchText(text=query)),
+            ]
+        )
+
+        if filter:
+            base_filter.must.extend(filter.must)
+
         retrieve_documents = self.vectorstore.similarity_search(
             query="*", 
             k=1, 
-            filter=Filter(
-                must=[
-                    FieldCondition(key="page_content", match=MatchText(text=query)),
-                ]
-            )
+            filter=base_filter,
         )
         return retrieve_documents
 

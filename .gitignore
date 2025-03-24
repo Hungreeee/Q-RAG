@@ -5,6 +5,7 @@ vectorstore/
 docker_data/
 
 # Byte-compiled / optimized / DLL files
+.deepeval*
 __pycache__/
 *.py[cod]
 *$py.class

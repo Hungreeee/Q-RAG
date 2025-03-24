@@ -42,6 +42,9 @@ class RAGPipeline:
         ]
 
         response = self.llm_generator.generate(rag_messages) 
+        
+        retrieved_documents = list({chunk.metadata["chunk_id"]: chunk for chunk in retrieved_documents}.values())
+        
         return response.content, retrieved_documents
     
 
@@ -59,11 +62,22 @@ class QRAGPipeline:
 
         self.config = config
 
-    def loop_qrag(self, question_chunk_pairs: Dict, force_replace: bool = False):
+    def loop_qrag(self, train_set: List[Dict], force_replace: bool = False):
         question_dataset = []
 
-        for question, related_chunks in question_chunk_pairs.items():
-            exist_questions = self.question_retriever.retrieve_exact(question)
+        for datapoint in train_set:
+            question = datapoint["question"]
+            syllabus = datapoint["syllabus"]
+            related_chunks = datapoint["related_chunks"]
+
+            exist_questions = self.question_retriever.retrieve_exact(
+                query=question, 
+                filter=Filter(
+                    must=[
+                        FieldCondition(key="metadata.syllabus", match=MatchValue(value=syllabus)),
+                    ]
+                ),
+            )
 
             if exist_questions:
                 exist_question = exist_questions[0]
@@ -84,7 +98,7 @@ class QRAGPipeline:
 
     def query(self, query: str, syllabus_filter: str):
         # Retrieve similar chunks
-        retrieved_documents = self.retriever.retrieve(
+        retrieved_documents = self.chunk_retriever.retrieve(
             query, 
             filter=Filter(
                 must=[
@@ -97,7 +111,7 @@ class QRAGPipeline:
         documents_content = "\n\n---\n\n".join(f"Document: {doc.page_content}" for doc in retrieved_documents)
 
         # Retrieve similar questions
-        retrieved_questions = self.question_retriever.retrieve(query, top_k=self.config.top_k) 
+        retrieved_questions = self.question_retriever.retrieve(query, top_k=self.config.qrag_top_k) 
         question_chunk_list = []
 
         for question in retrieved_questions:
@@ -105,6 +119,7 @@ class QRAGPipeline:
             question_content = question.page_content
             relevant_chunk_ids = question.metadata["related_chunks"] 
             related_documents = self.chunk_retriever.retrieve_ids(relevant_chunk_ids)
+            retrieved_documents.extend(related_documents)
 
             # Format prompt string
             documents_content = "\n\n".join(f"Document: {doc.page_content}" for doc in related_documents)
@@ -121,46 +136,7 @@ class QRAGPipeline:
         ]
 
         response = self.llm_generator.generate(rag_messages) 
+
+        retrieved_documents = list({chunk.metadata["chunk_id"]: chunk for chunk in retrieved_documents}.values())
+
         return response.content, retrieved_documents
-        
-    def query_qrag(self, query: str, syllabus_filter: str):
-        # Retrieve similar chunks
-        retrieved_documents = self.retriever.retrieve(
-            query, 
-            filter=Filter(
-                must=[
-                    FieldCondition(key="metadata.syllabus", match=MatchValue(value=syllabus_filter)),
-                ]
-            ), 
-            top_k=self.config.top_k
-        )
-        # Format prompt string
-        documents_content = "\n\n---\n\n".join(f"Document: {doc.page_content}" for doc in retrieved_documents)
-
-        # Retrieve similar questions
-        retrieved_questions = self.question_retriever.retrieve(query, top_k=self.config.top_k) 
-        question_chunk_list = []
-
-        for question in retrieved_questions:
-            # Retrieve chunks linked to questions
-            question_content = question.page_content
-            relevant_chunk_ids = question.metadata["related_chunks"] 
-            related_documents = self.chunk_retriever.retrieve_ids(relevant_chunk_ids)
-
-            # Format prompt string
-            documents_content = "\n\n".join(f"Document: {doc.page_content}" for doc in related_documents)
-            question_chunk_list.append(f"Example Question: {question_content}\nRelated Information:\n{documents_content}")
-
-        question_document_content = "\n\n---\n\n".join(quest_doc for quest_doc in question_chunk_list)
-
-        # # Format prompt
-        rag_messages = [
-            ("system", self.config.system_message),
-            ("human", f"User Question: {query}"),
-            ("human", f"Similar Answered Questions: {question_document_content}"),
-            ("human", f"Other Related Documents: {documents_content}"),
-        ]
-
-        response = self.llm_generator.generate(rag_messages) 
-        return response.content, retrieved_documents
-        # return None, retrieved_documents, question_chunk_list

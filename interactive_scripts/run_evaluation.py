@@ -1,17 +1,24 @@
 # %%
 import glob
-import httpx
 from tqdm import tqdm
+from collections import defaultdict
+
 import pandas as pd
 from dotenv import load_dotenv
+
+from typing import List
+
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 
 from src.llm_agent import AzureAIAgent, LLMJudge, update_base_url
 from src.retriever import QdrantRetriever
 from src.rag_pipeline import RAGPipeline, QRAGPipeline
+from src.metrics import ContextRecall, ContextPrecision
 
-from deepeval import evaluate
-from deepeval.metrics import FaithfulnessMetric, ContextualRecallMetric
-from deepeval.test_case import LLMTestCase
+from deepeval import evaluate 
+from deepeval.evaluate import EvaluationResult
+from deepeval.metrics import FaithfulnessMetric, GEval
+from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
 load_dotenv()
 
@@ -19,7 +26,7 @@ load_dotenv()
 def preprocess_data(df):
     """Preprocess QnA dataframes"""
     # Remove reasoning questions (not within the scope of our project)
-    df = df[~df["question_type"].isin(["multi reasoning", "single reasoning"])]
+    df = df[~df["question_type"].isin(["multi reasoning", "single reasoning", "no answer"])]
 
     # Construct ground-truth chunk list
     df["answer_spans"] = df[[f"answer_span_{idx}" for idx in range(1, 6)]].values.tolist()
@@ -34,6 +41,7 @@ def preprocess_data(df):
     df = df.drop([f"answer_span_{idx}" for idx in range(1, 6)], axis="columns")
 
     df["chunks"] = df["answer_spans"].apply(lambda row: [])
+    df = df.reset_index(drop=True)
     return df
 
 
@@ -44,12 +52,19 @@ def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFram
     for idx, row in tqdm(df_dataset_.iterrows()):
         ground_truth_clues = row["answer_spans"]
         ground_truth_chunks = []
+        syllabus = row["syllabus_name"]
+
+        syllabus_filter = Filter(
+            must=[
+                FieldCondition(key="metadata.syllabus", match=MatchValue(value=syllabus)),
+            ]
+        )
 
         for clue in ground_truth_clues:
-            chunk = retriever.retrieve_exact(clue)
+            chunk = retriever.retrieve_exact(clue, syllabus_filter)
             while not chunk and len(clue.split()) > truncation_threshold:
                 clue = clue[:len(clue) // 2]
-                chunk = retriever.retrieve_exact(clue)
+                chunk = retriever.retrieve_exact(clue, syllabus_filter)
             ground_truth_chunks.extend(chunk)
 
         ground_truth_chunks = list({chunk.metadata["chunk_id"]: chunk for chunk in ground_truth_chunks}.values())
@@ -59,31 +74,58 @@ def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFram
     return df_dataset_
 
 
+import time
+from tqdm import tqdm
+
 def construct_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame):
     """Collect answers into a dataset for evaluation"""
     df_dataset_ = df_dataset.copy()
     answer_list = []
 
-    for _, row in tqdm(df_dataset_.iterrows()):
+    # Rate limiting: limit to 10 queries per minute
+    last_query_time = time.time()  # Time of the last query
+    query_count = 0
+
+    for idx, row in tqdm(df_dataset_.iterrows()):
         syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
         ground_truth_chunks = row["chunks"]
         ground_truth_chunks_string = [chunk.page_content for chunk in ground_truth_chunks]
 
+        # Check if we need to wait to maintain the 10 queries per minute limit
+        current_time = time.time()
+        if query_count >= 10 and current_time - last_query_time < 60:
+            time_to_wait = 60 - (current_time - last_query_time)
+            time.sleep(time_to_wait)  # Sleep to respect rate limit
+            last_query_time = time.time()  # Reset the last query time after sleep
+            query_count = 0  # Reset query count after waiting
+
+        # Execute the query
         answer, retrieved_chunks = rag_pipeline.query(question, syllabus)
+
+        # Process retrieved chunks to remove duplicates by 'chunk_id'
         retrieved_chunks = list({chunk.metadata["chunk_id"]: chunk for chunk in retrieved_chunks}.values())
         retrieved_chunks_string = [chunk.page_content for chunk in retrieved_chunks]
 
+        # Add the result to the answer list
         answer_list.append(LLMTestCase(
             input=question,
             actual_output=answer,
             expected_output=ground_truth_answer,
             context=ground_truth_chunks_string,
             retrieval_context=retrieved_chunks_string,
+            additional_metadata={
+                "syllabus": syllabus,
+                "raw_ground_truth_chunks": ground_truth_chunks,
+                "raw_retrieved_chunks": retrieved_chunks,
+            }
         ))
 
+        query_count += 1  # Increment query count after each query
+
     return answer_list
+
 
 
 def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFrame):
@@ -91,17 +133,18 @@ def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFram
     rephrased_dataset = df_dataset.copy()
     question = []
 
-    for _, row in tqdm(rephrased_dataset.iterrows()):
+    for idx, row in tqdm(rephrased_dataset.iterrows()):
         syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
-        ground_truth_chunks = row["chunks"]
 
         paraphrase_messages = [
             ("system", """
             You are provided with a QUESTION of a student. Your task is to transform the QUESTION into a REPHRASED QUESTION by rephrasing it differently.
+            * Do a strong paraphrasing.
+            * Do not add any redundant text to your response besides the rephrased question. For example, do not add the "REPHRASED QUESTION" text to your response.
             * Make sure to leave enough information in the REPHRASED QUESTION so that the ANSWER to it do not change.
-            * You may use additional information such as the COURSE name to add noise to the REPHRASED QUESTION.
+            * Use additional information such as the COURSE name to add noise to the REPHRASED QUESTION.
             """),
             ("user", f"""
             QUESTION: {question}
@@ -114,6 +157,39 @@ def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFram
         rephrased_dataset.at[idx, "question"] = response.content
 
     return rephrased_dataset
+
+
+def construct_qrag_train_set(result_df: EvaluationResult, answer_dataset: List[LLMTestCase]):
+    """Construct learning dataset for Q-RAG loop"""
+    train_set = []
+    result_df_sorted = sorted(result_df.test_results, key=lambda x: x.name)
+
+    for idx, test_result in enumerate(result_df_sorted):
+        if not test_result.success:
+            question = test_result.input
+            ground_truth_chunks = answer_dataset[idx].additional_metadata["raw_ground_truth_chunks"]
+            syllabus = answer_dataset[idx].additional_metadata["syllabus"]
+            ground_truth_chunks_ids = [chunk.metadata["chunk_id"] for chunk in ground_truth_chunks]
+
+            train_set.append({
+                "question": question,
+                "syllabus": syllabus,
+                "related_chunks": ground_truth_chunks_ids,
+            })
+
+    return train_set
+
+
+def calculate_mean_metrics(result_df: EvaluationResult):
+    """Calculate mean metrics"""
+    mean_scores = defaultdict(list)
+
+    for result in result_df:
+        for metric in result.metrics_data:
+            mean_scores[metric.name].append(metric.score)
+
+    mean_scores_dict = {metric: sum(scores) / len(scores) for metric, scores in mean_scores.items()}
+    return mean_scores_dict
 
 # %%
 # Read context documents
@@ -148,8 +224,11 @@ df_val = pd.read_csv("./data/SyllabusQA/data/dataset_split/val.csv")
 df_val = preprocess_data(df_val)
 
 # %%
-df_test_slice = df_test.tail(5)
-df_test_slice
+# df_test_slice = df_test.tail(5)
+# df_test_slice
+
+# %%
+df_test
 
 # %%
 # Set up models
@@ -173,39 +252,107 @@ qrag_pipeline = QRAGPipeline(
 # %%
 # Ingest documents into database
 chunk_retriever.reset()
+question_retriever.reset()
 chunk_retriever.ingest(documents)
 
 # %%
 # Convert clues into chunks
-df_test_slice = preprocess_curate_chunks(chunk_retriever, df_test_slice)
-df_test_slice
+df_test = preprocess_curate_chunks(chunk_retriever, df_test)
+df_test
 
 # %%
-answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_slice)
-answer_dataset
+zero_iter_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test)
+zero_iter_answer_dataset
 
 # %%
-# Metric calculation
-faithfulness = FaithfulnessMetric(
+# Define metrics
+context_recall = ContextRecall(threshold=0.8)
+
+context_precision = ContextPrecision(threshold=0.8)
+
+faithfulness = FaithfulnessMetric(model=llm_judge, threshold=0.5)
+
+correctness = GEval(
+    name="Correctness",
     model=llm_judge,
+    threshold=0.5,
+    evaluation_steps=[
+        "Check whether the facts in 'actual output' contradicts any facts in 'expected output'",
+        "You should also heavily penalize omission of detail",
+        "Vague language, or contradicting OPINIONS, are OK"
+    ],
+    evaluation_params=[
+        LLMTestCaseParams.INPUT, 
+        LLMTestCaseParams.ACTUAL_OUTPUT, 
+        LLMTestCaseParams.EXPECTED_OUTPUT,
+    ],
 )
 
-context_recall = ContextualRecallMetric(
-    model=llm_judge,
-)
-
-result_df = evaluate(
-    answer_dataset, 
-    metrics=[faithfulness, context_recall], 
+# %%
+# Run evaluation pipeline (zero-iteration)
+zero_iter_result_df = evaluate(
+    zero_iter_answer_dataset, 
+    metrics=[
+        context_recall,
+    ], 
     ignore_errors=False,
     show_indicator=True,
 )
 
-result_df.test_results
+zero_iter_result_df.test_results
 
 # %%
 # Detect poor cases based on metrics and prompt Q-RAG to learn them
-curated_loop_qrag_dict = {}
-qrag_pipeline.loop_qrag(curated_loop_qrag_dict)
+qrag_train_set = construct_qrag_train_set(zero_iter_result_df, zero_iter_answer_dataset)
+qrag_pipeline.loop_qrag(qrag_train_set, force_replace=True)
 
 # %%
+df_test_slice_paraphrase = construct_rephrased_dataset(llm_agent, df_test)
+df_test_slice_paraphrase
+
+# %%
+qrag_answer_dataset = construct_answer_dataset(qrag_pipeline, df_test_slice_paraphrase)
+qrag_answer_dataset
+
+# %%
+# Run evaluation pipeline (zero-iteration)
+qrag_result_df = evaluate(
+    qrag_answer_dataset, 
+    metrics=[
+        context_recall,
+        context_precision,
+        faithfulness,
+        correctness,
+    ], 
+    ignore_errors=False,
+    show_indicator=True,
+)
+
+qrag_result_df.test_results
+
+# %%
+naive_rag_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_slice_paraphrase)
+naive_rag_answer_dataset
+
+# %%
+# Run evaluation pipeline (zero-iteration)
+naive_rag_result_df = evaluate(
+    naive_rag_answer_dataset, 
+    metrics=[
+        context_recall,
+        context_precision,
+        faithfulness,
+        correctness,
+    ], 
+    ignore_errors=False,
+    show_indicator=True,
+)
+
+naive_rag_result_df.test_results
+
+# %%
+# %%
+calculate_mean_metrics(qrag_result_df.test_results)
+
+# %%
+calculate_mean_metrics(naive_rag_result_df.test_results)

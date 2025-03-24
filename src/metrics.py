@@ -1,44 +1,96 @@
 from deepeval.metrics import BaseMetric
 from deepeval.test_case import LLMTestCase
 
+from ragas.metrics import NonLLMContextRecall, NonLLMContextPrecisionWithReference
+from ragas.dataset_schema import SingleTurnSample
 
-# Template for custom metrics
-class CustomMetric(BaseMetric):
+
+class ContextRecall(BaseMetric):
+    def __init__(
+        self,
+        threshold: float = 0.5,
+    ):
+        self.threshold = threshold
+        self.metric = NonLLMContextRecall()
+
     @property
     def __name__(self):
-        return "My Custom Metric"
+        return "Context Recall"
 
-    def generate_hypothetical_score(self):
-        pass
+    def generate_score(self, test_case: LLMTestCase):
+        sample = SingleTurnSample(
+            retrieved_contexts=test_case.retrieval_context,
+            reference_contexts=test_case.context,
+        )
+        score = self.metric.single_turn_score(sample)
+        return score
 
-    async def async_generate_hypothetical_score(self):
-        return self.generate_hypothetical_score()
+    async def async_generate_score(self, test_case: LLMTestCase):
+        return self.generate_score(test_case)
 
     def measure(self, test_case: LLMTestCase) -> float:
-        # Although not required, we recommend catching errors
-        # in a try block
         try:
-            self.score = self.generate_hypothetical_score(test_case)
-            if self.include_reason:
-                self.reason = self.generate_hypothetical_reason(test_case)
+            self.score = self.generate_score(test_case)
             self.success = self.score >= self.threshold
             return self.score
         except Exception as e:
-            # set metric error and re-raise it
             self.error = str(e)
             raise
 
     async def a_measure(self, test_case: LLMTestCase) -> float:
-        # Although not required, we recommend catching errors
-        # in a try block
         try:
-            self.score = await self.async_generate_hypothetical_score(test_case)
-            if self.include_reason:
-                self.reason = await self.async_generate_hypothetical_reason(test_case)
+            self.score = await self.async_generate_score(test_case)
             self.success = self.score >= self.threshold
             return self.score
         except Exception as e:
-            # set metric error and re-raise it
+            self.error = str(e)
+            raise
+
+    def is_successful(self) -> bool:
+        if self.error is not None:
+            self.success = False
+        else:
+            return self.success
+        
+
+class ContextPrecision(BaseMetric):
+    def __init__(
+        self,
+        threshold: float = 0.5,
+    ):
+        self.threshold = threshold
+        self.metric = NonLLMContextPrecisionWithReference()
+
+    @property
+    def __name__(self):
+        return "Context Precision"
+
+    def generate_score(self, test_case: LLMTestCase):
+        sample = SingleTurnSample(
+            retrieved_contexts=test_case.retrieval_context,
+            reference_contexts=test_case.context,
+        )
+        score = self.metric.single_turn_score(sample)
+        return score
+
+    async def async_generate_score(self, test_case: LLMTestCase):
+        return self.generate_score(test_case)
+
+    def measure(self, test_case: LLMTestCase) -> float:
+        try:
+            self.score = self.generate_score(test_case)
+            self.success = self.score >= self.threshold
+            return self.score
+        except Exception as e:
+            self.error = str(e)
+            raise
+
+    async def a_measure(self, test_case: LLMTestCase) -> float:
+        try:
+            self.score = await self.async_generate_score(test_case)
+            self.success = self.score >= self.threshold
+            return self.score
+        except Exception as e:
             self.error = str(e)
             raise
 

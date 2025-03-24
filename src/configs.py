@@ -18,7 +18,7 @@ class RetrieverConfig:
 
 @dataclass
 class LLMConfig:
-    model: str = "gpt-4-turbo"
+    model: str = "gpt-4o"
     temperature: int = None
     top_p: int = None
 
@@ -30,6 +30,7 @@ class LLMConfig:
 @dataclass
 class RAGConfig:
     top_k: int = 5
+    qrag_top_k: int = 1
     system_message: str = """
     You are a question-answering chatbot acting as a virtual teaching assistant. Your role is to help students by providing accurate and concise answers based on the given context.
     - Use the provided documents to formulate your response.
