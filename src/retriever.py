@@ -146,6 +146,9 @@ class QdrantRetriever(BaseRetriever):
         self, 
         id_list: List,
     ):
+        if not id_list:
+            return []
+        
         retrieve_documents = self.vectorstore.similarity_search(
             query="*",
             filter=Filter(

@@ -35,7 +35,6 @@ class RAGConfig:
     You are a question-answering chatbot acting as a virtual teaching assistant. Your role is to help students by providing accurate and concise answers based on the given context.
     - Use the provided documents to formulate your response.
     - Do not mention the presence of these documents in your response. Just extract relevant facts you can use to build up your answer.
-    - Respond with "no answer" if you cannot find enough information to answer a question.
     """
 
     @classmethod

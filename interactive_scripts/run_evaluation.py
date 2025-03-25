@@ -1,5 +1,7 @@
 # %%
 import glob
+import pickle
+import time
 from tqdm import tqdm
 from collections import defaultdict
 
@@ -49,7 +51,7 @@ def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFram
     """Converts the clues given as answer spans into actual chunks"""
     df_dataset_ = df_dataset.copy()
 
-    for idx, row in tqdm(df_dataset_.iterrows()):
+    for idx, row in tqdm(df_dataset_.iterrows(), total=len(df_dataset_)):
         ground_truth_clues = row["answer_spans"]
         ground_truth_chunks = []
         syllabus = row["syllabus_name"]
@@ -70,36 +72,34 @@ def preprocess_curate_chunks(retriever: QdrantRetriever, df_dataset: pd.DataFram
         ground_truth_chunks = list({chunk.metadata["chunk_id"]: chunk for chunk in ground_truth_chunks}.values())
         df_dataset_.at[idx, "chunks"] = ground_truth_chunks
 
+    df_dataset_ = df_dataset_[df_dataset_["chunks"].apply(len) > 0]
     df_dataset_ = df_dataset_.reset_index(drop=True)
     return df_dataset_
 
-
-import time
-from tqdm import tqdm
 
 def construct_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame):
     """Collect answers into a dataset for evaluation"""
     df_dataset_ = df_dataset.copy()
     answer_list = []
 
-    # Rate limiting: limit to 10 queries per minute
-    last_query_time = time.time()  # Time of the last query
-    query_count = 0
+    # # Rate limiting: limit to 10 queries per minute
+    # last_query_time = time.time()  # Time of the last query
+    # query_count = 0
 
-    for idx, row in tqdm(df_dataset_.iterrows()):
+    for idx, row in tqdm(df_dataset_.iterrows(), total=len(df_dataset_)):
         syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
         ground_truth_chunks = row["chunks"]
         ground_truth_chunks_string = [chunk.page_content for chunk in ground_truth_chunks]
 
-        # Check if we need to wait to maintain the 10 queries per minute limit
-        current_time = time.time()
-        if query_count >= 10 and current_time - last_query_time < 60:
-            time_to_wait = 60 - (current_time - last_query_time)
-            time.sleep(time_to_wait)  # Sleep to respect rate limit
-            last_query_time = time.time()  # Reset the last query time after sleep
-            query_count = 0  # Reset query count after waiting
+        # # Check if we need to wait to maintain the 10 queries per minute limit
+        # current_time = time.time()
+        # if query_count >= 10 and current_time - last_query_time < 60:
+        #     time_to_wait = 60 - (current_time - last_query_time)
+        #     time.sleep(time_to_wait + 1) 
+        #     last_query_time = time.time()  
+        #     query_count = 0
 
         # Execute the query
         answer, retrieved_chunks = rag_pipeline.query(question, syllabus)
@@ -122,10 +122,9 @@ def construct_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame
             }
         ))
 
-        query_count += 1  # Increment query count after each query
+        # query_count += 1  # Increment query count after each query
 
     return answer_list
-
 
 
 def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFrame):
@@ -133,7 +132,7 @@ def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFram
     rephrased_dataset = df_dataset.copy()
     question = []
 
-    for idx, row in tqdm(rephrased_dataset.iterrows()):
+    for idx, row in tqdm(rephrased_dataset.iterrows(), total=len(rephrased_dataset)):
         syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
@@ -141,14 +140,12 @@ def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFram
         paraphrase_messages = [
             ("system", """
             You are provided with a QUESTION of a student. Your task is to transform the QUESTION into a REPHRASED QUESTION by rephrasing it differently.
-            * Do a strong paraphrasing.
+            * Do a strong paraphrasing. 
             * Do not add any redundant text to your response besides the rephrased question. For example, do not add the "REPHRASED QUESTION" text to your response.
             * Make sure to leave enough information in the REPHRASED QUESTION so that the ANSWER to it do not change.
-            * Use additional information such as the COURSE name to add noise to the REPHRASED QUESTION.
             """),
             ("user", f"""
             QUESTION: {question}
-            COURSE: {syllabus}
             ANSWER: {ground_truth_answer}
             """)
         ]
@@ -162,7 +159,7 @@ def construct_rephrased_dataset(llm_agent: AzureAIAgent, df_dataset: pd.DataFram
 def construct_qrag_train_set(result_df: EvaluationResult, answer_dataset: List[LLMTestCase]):
     """Construct learning dataset for Q-RAG loop"""
     train_set = []
-    result_df_sorted = sorted(result_df.test_results, key=lambda x: x.name)
+    result_df_sorted = sorted(result_df.test_results, key=lambda x: int(x.name.split("_")[-1]))
 
     for idx, test_result in enumerate(result_df_sorted):
         if not test_result.success:
@@ -224,10 +221,6 @@ df_val = pd.read_csv("./data/SyllabusQA/data/dataset_split/val.csv")
 df_val = preprocess_data(df_val)
 
 # %%
-# df_test_slice = df_test.tail(5)
-# df_test_slice
-
-# %%
 df_test
 
 # %%
@@ -250,10 +243,11 @@ qrag_pipeline = QRAGPipeline(
 )
 
 # %%
-# Ingest documents into database
+# Refresh database
 chunk_retriever.reset()
-question_retriever.reset()
 chunk_retriever.ingest(documents)
+
+question_retriever.reset()
 
 # %%
 # Convert clues into chunks
@@ -262,6 +256,10 @@ df_test
 
 # %%
 zero_iter_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test)
+
+with open("data/saved_data/zero_iter_answer_dataset", "wb") as f:  
+    pickle.dump(zero_iter_answer_dataset, f)
+
 zero_iter_answer_dataset
 
 # %%
@@ -299,19 +297,32 @@ zero_iter_result_df = evaluate(
     show_indicator=True,
 )
 
+with open("data/saved_data/zero_iter_result_df", "wb") as f:  
+    pickle.dump(zero_iter_result_df.test_results, f)
+
 zero_iter_result_df.test_results
 
 # %%
 # Detect poor cases based on metrics and prompt Q-RAG to learn them
 qrag_train_set = construct_qrag_train_set(zero_iter_result_df, zero_iter_answer_dataset)
-qrag_pipeline.loop_qrag(qrag_train_set, force_replace=True)
+qrag_pipeline.loop_qrag(qrag_train_set)
 
 # %%
-df_test_slice_paraphrase = construct_rephrased_dataset(llm_agent, df_test)
-df_test_slice_paraphrase
+with open("data/saved_data/zero_iter_result_df", "wb") as f:  
+    pickle.dump(zero_iter_result_df.test_results, f)
 
 # %%
-qrag_answer_dataset = construct_answer_dataset(qrag_pipeline, df_test_slice_paraphrase)
+df_test_paraphrase = construct_rephrased_dataset(llm_agent, df_test)
+
+with open("data/saved_data/df_test_paraphrase", "wb") as f:  
+    pickle.dump(df_test_paraphrase, f)
+
+# %%
+qrag_answer_dataset = construct_answer_dataset(qrag_pipeline, df_test_paraphrase)
+
+with open("data/saved_data/qrag_answer_dataset", "wb") as f:  
+    pickle.dump(qrag_answer_dataset, f)
+
 qrag_answer_dataset
 
 # %%
@@ -320,18 +331,25 @@ qrag_result_df = evaluate(
     qrag_answer_dataset, 
     metrics=[
         context_recall,
-        context_precision,
-        faithfulness,
-        correctness,
+        # context_precision,
+        # faithfulness,
+        # correctness,
     ], 
     ignore_errors=False,
     show_indicator=True,
 )
 
+with open("data/saved_data/qrag_result_df", "wb") as f:  
+    pickle.dump(qrag_result_df.test_results, f)
+
 qrag_result_df.test_results
 
 # %%
-naive_rag_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_slice_paraphrase)
+naive_rag_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_paraphrase)
+
+with open("data/saved_data/naive_rag_answer_dataset", "wb") as f:  
+    pickle.dump(naive_rag_answer_dataset, f)
+
 naive_rag_answer_dataset
 
 # %%
@@ -348,11 +366,15 @@ naive_rag_result_df = evaluate(
     show_indicator=True,
 )
 
+with open("data/saved_data/naive_rag_result_df", "wb") as f:  
+    pickle.dump(naive_rag_result_df.test_results, f)
+
 naive_rag_result_df.test_results
 
-# %%
 # %%
 calculate_mean_metrics(qrag_result_df.test_results)
 
 # %%
 calculate_mean_metrics(naive_rag_result_df.test_results)
+
+# %%
