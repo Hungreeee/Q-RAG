@@ -7,7 +7,6 @@ from qdrant_client.models import Filter, FieldCondition, MatchAny, MatchText
 
 from langchain.schema.document import Document
 from langchain_qdrant import QdrantVectorStore
-from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 

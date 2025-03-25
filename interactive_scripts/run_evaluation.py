@@ -1,7 +1,6 @@
 # %%
 import glob
 import pickle
-import time
 from tqdm import tqdm
 from collections import defaultdict
 
@@ -82,24 +81,12 @@ def construct_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame
     df_dataset_ = df_dataset.copy()
     answer_list = []
 
-    # # Rate limiting: limit to 10 queries per minute
-    # last_query_time = time.time()  # Time of the last query
-    # query_count = 0
-
     for idx, row in tqdm(df_dataset_.iterrows(), total=len(df_dataset_)):
         syllabus = row["syllabus_name"]
         question = row["question"]
         ground_truth_answer = row["answer"]
         ground_truth_chunks = row["chunks"]
         ground_truth_chunks_string = [chunk.page_content for chunk in ground_truth_chunks]
-
-        # # Check if we need to wait to maintain the 10 queries per minute limit
-        # current_time = time.time()
-        # if query_count >= 10 and current_time - last_query_time < 60:
-        #     time_to_wait = 60 - (current_time - last_query_time)
-        #     time.sleep(time_to_wait + 1) 
-        #     last_query_time = time.time()  
-        #     query_count = 0
 
         # Execute the query
         answer, retrieved_chunks = rag_pipeline.query(question, syllabus)
@@ -121,8 +108,6 @@ def construct_answer_dataset(rag_pipeline: RAGPipeline, df_dataset: pd.DataFrame
                 "raw_retrieved_chunks": retrieved_chunks,
             }
         ))
-
-        # query_count += 1  # Increment query count after each query
 
     return answer_list
 
