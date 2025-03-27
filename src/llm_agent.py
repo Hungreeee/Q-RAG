@@ -18,8 +18,8 @@ def update_base_url(request: httpx.Request, model: str):
     if request.url.path == "/chat/completions":
         if model == "gpt-4o":
             request.url = request.url.copy_with(path="/v1/openai/deployments/gpt-4o-2024-08-06/chat/completions")
-        elif model == "gpt-35-turbo":
-            request.url = request.url.copy_with(path="/v1/chat/")
+        elif model == "gpt-3.5-turbo":
+            request.url = request.url.copy_with(path="/v1/chat/gpt-35-turbo-1106")
         elif model == "gpt-4-turbo":
             request.url = request.url.copy_with(path="/v1/openai/gpt4-turbo/chat/completions")
         elif model == "gpt-4-8k":
@@ -90,20 +90,12 @@ class AzureAIAgent(BaseAgent):
 class LLMJudge(DeepEvalBaseLLM):
     def __init__(self, 
         config: LLMConfig = LLMConfig.default(),
-        base_url: str = "https://aalto-openai-apigw.azure-api.net"
     ):
         self.config = config
 
         self.client = ChatOpenAI(
-            default_headers={
-                "Ocp-Apim-Subscription-Key": os.getenv("AALTO_OPENAI_API_KEY")
-            },
-            base_url=base_url,
-            api_key=None,
-            http_client=httpx.Client(
-            event_hooks={
-                "request": [lambda request: update_base_url(request, model=self.config.model)],
-            }),
+            model=self.config.model, 
+            api_key=os.getenv("OPENAI_API_KEY"), 
             temperature=self.config.temperature,
         )
 

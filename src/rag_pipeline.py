@@ -84,12 +84,14 @@ class QRAGPipeline:
                 self.question_retriever.delete([exist_question.metadata["_id"]])
                 question_dataset.append({
                     "page_content": question,
+                    "syllabus": syllabus,
                     "related_chunks": list(set(exist_question.metadata["related_chunks"] + related_chunks)) if not force_replace else related_chunks,
                     "parent_id": exist_question.metadata["parent_id"],
                 })
             else:
                 question_dataset.append({
                     "page_content": question,
+                    "syllabus": syllabus,
                     "related_chunks": related_chunks,
                     "parent_id": str(uuid4()),
                 })
@@ -108,7 +110,9 @@ class QRAGPipeline:
                 ]
             ), 
             top_k=self.config.qrag_top_k,
+            score_threshold=self.config.qrag_threshold,
         ) 
+
         question_chunk_list = []
 
         for question in retrieved_questions:
@@ -136,7 +140,7 @@ class QRAGPipeline:
         )
 
         # Format prompt string
-        retrieved_documents_qrag_ids = set([doc.metadata["chunk_id"] for doc in retrieved_documents_rag])
+        retrieved_documents_qrag_ids = set([doc.metadata["chunk_id"] for doc in retrieved_documents_qrag])
         retrieved_documents_rag = [doc for doc in retrieved_documents_rag if doc.metadata["chunk_id"] not in retrieved_documents_qrag_ids]
         documents_content = "\n\n---\n\n".join(f"Document: {doc.page_content}" for doc in retrieved_documents_rag)
 

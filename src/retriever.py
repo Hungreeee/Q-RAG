@@ -112,11 +112,13 @@ class QdrantRetriever(BaseRetriever):
         query: str, 
         top_k: int = 5,
         filter: models.Filter = None,
+        score_threshold: float = None,
     ):
         retrieve_documents = self.vectorstore.similarity_search(
             query=query, 
             k=top_k, 
             filter=filter,
+            score_threshold=score_threshold,
         )
         return retrieve_documents
     

@@ -31,6 +31,7 @@ class LLMConfig:
 class RAGConfig:
     top_k: int = 5
     qrag_top_k: int = 1
+    qrag_threshold: float = 0.5
     system_message: str = """
     You are a question-answering chatbot acting as a virtual teaching assistant. Your role is to help students by providing accurate and concise answers based on the given context.
     - Use the provided documents to formulate your response.
