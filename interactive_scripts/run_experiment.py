@@ -162,18 +162,6 @@ def construct_qrag_train_set(result_df: EvaluationResult, answer_dataset: List[L
 
     return train_set
 
-
-def calculate_mean_metrics(result_df: EvaluationResult):
-    """Calculate mean metrics"""
-    mean_scores = defaultdict(list)
-
-    for result in result_df:
-        for metric in result.metrics_data:
-            mean_scores[metric.name].append(metric.score)
-
-    mean_scores_dict = {metric: sum(scores) / len(scores) for metric, scores in mean_scores.items()}
-    return mean_scores_dict
-
 # %%
 # Read context documents
 files = glob.glob("./data/SyllabusQA/syllabi/**/*.txt", recursive=True)
@@ -207,9 +195,6 @@ df_val = pd.read_csv("./data/SyllabusQA/data/dataset_split/val.csv")
 df_val = preprocess_data(df_val)
 
 # %%
-df_test
-
-# %%
 # Set up models
 chunk_retriever = QdrantRetriever(collection_name="chunks")
 question_retriever = QdrantRetriever(collection_name="questions")
@@ -229,10 +214,10 @@ qrag_pipeline = QRAGPipeline(
 
 # %%
 # Refresh database
-# chunk_retriever.reset()
-# chunk_retriever.ingest(documents)
+chunk_retriever.reset()
+chunk_retriever.ingest(documents)
 
-# question_retriever.reset()
+question_retriever.reset()
 
 # %%
 # Convert clues into chunks
@@ -240,13 +225,13 @@ df_test = preprocess_curate_chunks(chunk_retriever, df_test)
 df_test
 
 # %%
-# zero_iter_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test)
+zero_iter_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test)
 
-# with open("data/saved_data/zero_iter_answer_dataset", "wb") as f:  
-#     pickle.dump(zero_iter_answer_dataset, f)
+with open("data/saved_data/zero_iter_answer_dataset", "wb") as f:  
+    pickle.dump(zero_iter_answer_dataset, f)
 
-with open("data/saved_data/zero_iter_answer_dataset", "rb") as f:  
-    zero_iter_answer_dataset = pickle.load(f)
+# with open("data/saved_data/zero_iter_answer_dataset", "rb") as f:  
+#     zero_iter_answer_dataset = pickle.load(f)
 
 zero_iter_answer_dataset
 
@@ -283,111 +268,102 @@ correctness = GEval(
 
 # %%
 # Run evaluation pipeline (zero-iteration)
-# zero_iter_result_df = evaluate(
-#     zero_iter_answer_dataset, 
-#     metrics=[
-#         context_recall,
-#     ], 
-#     ignore_errors=False,
-#     show_indicator=True,
-# )
+zero_iter_result_df = evaluate(
+    zero_iter_answer_dataset, 
+    metrics=[
+        context_recall,
+    ], 
+    ignore_errors=False,
+    show_indicator=True,
+)
 
-# with open("data/saved_data/zero_iter_result_df", "wb") as f:  
-#     pickle.dump(zero_iter_result_df, f)
+with open("data/saved_data/zero_iter_result_df", "wb") as f:  
+    pickle.dump(zero_iter_result_df, f)
 
-with open("data/saved_data/zero_iter_result_df", "rb") as f:  
-    zero_iter_result_df = pickle.load(f)
+# with open("data/saved_data/zero_iter_result_df", "rb") as f:  
+#     zero_iter_result_df = pickle.load(f)
 
 zero_iter_result_df.test_results
 
 # %%
 # Detect poor cases based on metrics and prompt Q-RAG to learn them
-# qrag_train_set = construct_qrag_train_set(zero_iter_result_df, zero_iter_answer_dataset)
-# qrag_pipeline.loop_qrag(qrag_train_set, force_replace=True)
+qrag_train_set = construct_qrag_train_set(zero_iter_result_df, zero_iter_answer_dataset)
+qrag_pipeline.loop_qrag(qrag_train_set, force_replace=True)
 
 # %%
-# df_test_paraphrase = construct_rephrased_dataset(llm_agent, df_test)
+df_test_paraphrase = construct_rephrased_dataset(llm_agent, df_test)
 
-# with open("data/saved_data/df_test_paraphrase", "wb") as f:  
-#     pickle.dump(df_test_paraphrase, f)
+with open("data/saved_data/df_test_paraphrase", "wb") as f:  
+    pickle.dump(df_test_paraphrase, f)
 
-with open("data/saved_data/df_test_paraphrase", "rb") as f:  
-    df_test_paraphrase = pickle.load(f)
+# with open("data/saved_data/df_test_paraphrase", "rb") as f:  
+#     df_test_paraphrase = pickle.load(f)
 
 df_test_paraphrase
 
 # %%
 # Obtain results from Q-RAG
-# qrag_answer_dataset = construct_answer_dataset(qrag_pipeline, df_test_paraphrase)
+qrag_answer_dataset = construct_answer_dataset(qrag_pipeline, df_test_paraphrase)
 
-# with open("data/saved_data/qrag_answer_dataset", "wb") as f:  
-#     pickle.dump(qrag_answer_dataset, f)
+with open("data/saved_data/qrag_answer_dataset", "wb") as f:  
+    pickle.dump(qrag_answer_dataset, f)
 
-with open("data/saved_data/qrag_answer_dataset", "rb") as f:  
-    qrag_answer_dataset = pickle.load(f)
+# with open("data/saved_data/qrag_answer_dataset", "rb") as f:  
+#     qrag_answer_dataset = pickle.load(f)
 
 qrag_answer_dataset
 
 # %%
 # Run evaluation pipeline (Q-RAG)
-# qrag_result_df = evaluate(
-#     qrag_answer_dataset, 
-#     metrics=[
-#         faithfulness,
-#         correctness,
-#         context_recall,
-#         context_precision,
-#     ], 
-#     ignore_errors=False,
-#     show_indicator=True,
-# )
+qrag_result_df = evaluate(
+    qrag_answer_dataset, 
+    metrics=[
+        faithfulness,
+        correctness,
+        context_recall,
+        context_precision,
+    ], 
+    ignore_errors=False,
+    show_indicator=True,
+)
 
-# with open("data/saved_data/qrag_result_df", "wb") as f:  
-#     pickle.dump(qrag_result_df, f)
+with open("data/saved_data/qrag_result_df", "wb") as f:  
+    pickle.dump(qrag_result_df, f)
 
-with open("data/saved_data/qrag_result_df", "rb") as f:  
-    qrag_result_df = pickle.load(f)
+# with open("data/saved_data/qrag_result_df", "rb") as f:  
+#     qrag_result_df = pickle.load(f)
 
 qrag_result_df.test_results
 
 # %% Obtain results from RAG
-# naive_rag_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_paraphrase)
+naive_rag_answer_dataset = construct_answer_dataset(naive_rag_pipeline, df_test_paraphrase)
 
-# with open("data/saved_data/naive_rag_answer_dataset", "wb") as f:  
-#     pickle.dump(naive_rag_answer_dataset, f)
+with open("data/saved_data/naive_rag_answer_dataset", "wb") as f:  
+    pickle.dump(naive_rag_answer_dataset, f)
 
-with open("data/saved_data/naive_rag_answer_dataset", "rb") as f:  
-    naive_rag_answer_dataset = pickle.load(f)
+# with open("data/saved_data/naive_rag_answer_dataset", "rb") as f:  
+#     naive_rag_answer_dataset = pickle.load(f)
 
 naive_rag_answer_dataset
 
 # %%
 # Run evaluation pipeline (RAG)
-# naive_rag_result_df = evaluate(
-#     naive_rag_answer_dataset, 
-#     metrics=[
-#         faithfulness,
-#         correctness,
-#         context_recall,
-#         context_precision,
-#     ], 
-#     ignore_errors=False,
-#     show_indicator=True,
-# )
+naive_rag_result_df = evaluate(
+    naive_rag_answer_dataset, 
+    metrics=[
+        faithfulness,
+        correctness,
+        context_recall,
+        context_precision,
+    ], 
+    ignore_errors=False,
+    show_indicator=True,
+)
 
-# with open("data/saved_data/naive_rag_result_df", "wb") as f:  
-#     pickle.dump(naive_rag_result_df, f)
+with open("data/saved_data/naive_rag_result_df", "wb") as f:  
+    pickle.dump(naive_rag_result_df, f)
 
-with open("data/saved_data/naive_rag_result_df", "rb") as f:  
-    naive_rag_result_df = pickle.load(f)
+# with open("data/saved_data/naive_rag_result_df", "rb") as f:  
+#     naive_rag_result_df = pickle.load(f)
 
 naive_rag_result_df.test_results
-
-# %%
-calculate_mean_metrics(qrag_result_df.test_results)
-
-# %%
-calculate_mean_metrics(naive_rag_result_df.test_results)
-
-# %%
-calculate_mean_metrics(zero_iter_result_df.test_results)
