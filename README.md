@@ -2,9 +2,11 @@
 
 ## Introduction
 
-Retrieval-Augmented Generation (RAG) enhances LLMs by retrieving external documents as context, making it valuable for educational QA systems. However, traditional RAG often struggles with mismatched query-chunk semantics and lacks effective human feedback mechanisms—leading to incomplete or unhelpful answers.
+Retrieval-Augmented Generation (RAG) has emerged as a powerful technique for enhancing Large Language Models (LLMs) with access to external knowledge without requiring costly fine-tuning. By retrieving relevant documents and incorporating them into the context for each query, RAG improves the factual accuracy and relevance of responses—an especially promising approach in educational question-answering (QA) systems.
 
-Q-RAG addresses these challenges with:
+However, conventional RAG systems face two major limitations in this domain. First, the retrieval step often fails to surface the most relevant information due to semantic mismatches between natural language queries and information chunks. This can result in partially relevant but ultimately insufficient responses, which is particularly problematic in educational settings where precision is critical. Second, most RAG pipelines operate as closed systems, lacking mechanisms for expert feedback. This makes it difficult for instructors or teaching assistants to correct retrieval failures or guide the model’s future outputs—leading to repeated misinformation and a growing burden on educators.
+
+To address these issues, we introduce Q-RAG, a novel RAG-based framework specifically designed for educational contexts. Q-RAG introduces two key features:
 - *Question-Based Retrieval*: Indexing content via representative model questions to better match student queries.
 - *Feedback-Loop Learning*: Integrating expert corrections to iteratively improve retrieval quality.
 
