@@ -1,4 +1,4 @@
-# Educational-Knowledge-Graph-RAG
+# Q-RAG: Improving Educational QA with Query-to-query Retrieval and Feedback Loop
 
 ## Introduction
 
