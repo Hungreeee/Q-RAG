@@ -4,11 +4,11 @@
 
 Retrieval-Augmented Generation (RAG) has emerged as a powerful technique for enhancing Large Language Models (LLMs) with access to external knowledge without requiring costly fine-tuning. By retrieving relevant documents and incorporating them into the context for each query, RAG improves the factual accuracy and relevance of responses—an especially promising approach in educational question-answering (QA) systems.
 
-However, conventional RAG systems face two major limitations in this domain. 
-- First, the retrieval step often fails to surface the most relevant information due to semantic mismatches between natural language queries and information chunks. Human questions are concise and target specific information, while document chunks are general statements without the goal to address any direct question. This structural difference leads to mismatching in the semantic space, making retrieval less accurate, resulting in superficially relevant but unhelpful content.
+However, conventional RAG systems face two major limitations in this domain:
+- First, the retrieval step often fails to surface the most relevant information due to semantic mismatches between natural language queries and information chunks. Human questions are concise and target specific information, while document chunks are general statements without the goal to address any direct question. This inherent query-to-chunk difference leads to mismatching in the semantic space, making existing retrieval paradigms less reliable, resulting in superficially relevant but unhelpful content.
 - Second, most RAG pipelines operate as closed systems, lacking mechanisms for expert feedback. This makes it difficult for instructors or teaching assistants to correct retrieval failures or guide the model’s future outputs—leading to repeated misinformation and a growing burden on educators.
 
-To address these issues, we introduce Q-RAG, a novel RAG-based framework specifically designed for educational contexts. Q-RAG introduces two key features:
+To address these issues, we introduce Q-RAG, a novel RAG-based framework specifically designed for educational contexts. Q-RAG introduces two key features to generic RAG:
 - *Query-to-query Retrieval*: Indexing document chunks via representative "model questions" to match with similar queries - essentially converting to query-to-query matching.
 - *Feedback-Loop Learning*: Allowing direct intervention to address questions leading to poor retrieval, preventing them from occuring again.
 
