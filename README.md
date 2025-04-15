@@ -10,6 +10,8 @@ To address these issues, we introduce Q-RAG, a novel RAG-based framework specifi
 - *Question-Based Retrieval*: Indexing content via representative model questions to better match student queries.
 - *Feedback-Loop Learning*: Integrating expert corrections to iteratively improve retrieval quality.
 
+![qrag-structure](https://github.com/user-attachments/assets/39392036-2f7b-4475-87e0-b2f955553d75)
+
 This project builds Q-RAG to create a more accurate, feedback-driven educational chatbot, while contributing to ongoing research in retrieval-based LLMs in closed-domain QA tasks. The directory `src` contains the core components for RAG and Q-RAG. The folder `interactive_scripts` contains the Python scripts used for result generation, evaluation, and analysis.
 
 ## Installations
